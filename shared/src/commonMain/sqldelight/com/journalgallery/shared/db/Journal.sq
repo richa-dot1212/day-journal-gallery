@@ -1,0 +1,108 @@
+-- Per-media-item extracted colors. Keyed by mediaId; contentHash invalidates on change.
+CREATE TABLE item_color (
+    media_id      TEXT NOT NULL PRIMARY KEY,
+    content_hash  TEXT NOT NULL,
+    day_iso       TEXT NOT NULL,
+    colors_json   TEXT NOT NULL,      -- serialized List<WeightedColor>
+    computed_at   INTEGER NOT NULL
+);
+CREATE INDEX item_color_day ON item_color(day_iso);
+
+-- Aggregated per-day colors + gradient. day_iso is 'YYYY-MM-DD'.
+CREATE TABLE day_color (
+    day_iso        TEXT NOT NULL PRIMARY KEY,
+    year           INTEGER NOT NULL,
+    month          INTEGER NOT NULL,
+    day            INTEGER NOT NULL,
+    colors_json    TEXT NOT NULL,     -- serialized DayColors (exactly 3 Rgb)
+    source_hash    TEXT NOT NULL,     -- hash of the set of contributing (media_id, content_hash)
+    color_sync     TEXT NOT NULL DEFAULT 'NOT_SENT',
+    computed_at    INTEGER NOT NULL
+);
+CREATE INDEX day_color_month ON day_color(year, month);
+
+-- Per-day journal audio + its transfer state to the ESP32.
+CREATE TABLE audio_entry (
+    day_iso       TEXT NOT NULL PRIMARY KEY,
+    year          INTEGER NOT NULL,
+    month         INTEGER NOT NULL,
+    day           INTEGER NOT NULL,
+    local_path    TEXT NOT NULL,
+    duration_ms   INTEGER NOT NULL,
+    size_bytes    INTEGER NOT NULL,
+    crc32         INTEGER NOT NULL,
+    sync_state    TEXT NOT NULL DEFAULT 'PENDING',
+    updated_at    INTEGER NOT NULL
+);
+CREATE INDEX audio_entry_month ON audio_entry(year, month);
+
+-- Last paired device (single row, id = 0).
+CREATE TABLE device_pairing (
+    id            INTEGER NOT NULL PRIMARY KEY,
+    service_name  TEXT NOT NULL,
+    host          TEXT NOT NULL,
+    port          INTEGER NOT NULL,
+    paired_at     INTEGER NOT NULL
+);
+
+-- item_color -----------------------------------------------------------------
+selectItemColor:
+SELECT * FROM item_color WHERE media_id = ?;
+
+selectItemColorsForDay:
+SELECT * FROM item_color WHERE day_iso = ?;
+
+upsertItemColor:
+INSERT OR REPLACE INTO item_color(media_id, content_hash, day_iso, colors_json, computed_at)
+VALUES (?, ?, ?, ?, ?);
+
+deleteItemColorsNotIn:
+DELETE FROM item_color WHERE media_id NOT IN ?;
+
+-- day_color ------------------------------------------------------------------
+selectDayColor:
+SELECT * FROM day_color WHERE day_iso = ?;
+
+selectDayColorsForMonth:
+SELECT * FROM day_color WHERE year = ? AND month = ? ORDER BY day;
+
+selectAllDayColors:
+SELECT * FROM day_color ORDER BY year DESC, month DESC, day DESC;
+
+upsertDayColor:
+INSERT OR REPLACE INTO day_color(day_iso, year, month, day, colors_json, source_hash, color_sync, computed_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+updateDayColorSync:
+UPDATE day_color SET color_sync = ? WHERE day_iso = ?;
+
+-- audio_entry --------------------------------------------------------------
+selectAudioEntry:
+SELECT * FROM audio_entry WHERE day_iso = ?;
+
+selectAudioEntriesForMonth:
+SELECT * FROM audio_entry WHERE year = ? AND month = ?;
+
+selectAudioEntriesByState:
+SELECT * FROM audio_entry WHERE sync_state = ?;
+
+upsertAudioEntry:
+INSERT OR REPLACE INTO audio_entry(day_iso, year, month, day, local_path, duration_ms, size_bytes, crc32, sync_state, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateAudioSyncState:
+UPDATE audio_entry SET sync_state = ?, updated_at = ? WHERE day_iso = ?;
+
+deleteAudioEntry:
+DELETE FROM audio_entry WHERE day_iso = ?;
+
+-- device_pairing ---------------------------------------------------------
+selectPairing:
+SELECT * FROM device_pairing WHERE id = 0;
+
+upsertPairing:
+INSERT OR REPLACE INTO device_pairing(id, service_name, host, port, paired_at)
+VALUES (0, ?, ?, ?, ?);
+
+clearPairing:
+DELETE FROM device_pairing WHERE id = 0;
