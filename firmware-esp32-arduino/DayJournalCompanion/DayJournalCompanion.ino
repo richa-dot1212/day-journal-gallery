@@ -36,10 +36,15 @@
 #include <WiFi.h>
 
 // ====================  EDIT THESE  ====================
-const char* WIFI_SSID = "YOUR_WIFI_NAME";
-const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";
+// Leave WIFI_SSID as "" to run as a hotspot (phone joins "DayJournal-ESP32").
+// Fill both in to instead join your home 2.4 GHz Wi-Fi.
+const char* WIFI_SSID = "";
+const char* WIFI_PASS = "";
 
-#define LED_PIN      13     // the GPIO your strip's DIN is wired to
+const char* AP_SSID = "DayJournal-ESP32";
+const char* AP_PASS = "journal123";          // >= 8 characters
+
+#define LED_PIN      5      // the GPIO your strip's DIN is wired to
 #define BUTTON_PIN   27     // your button (other leg to GND)
 
 #define LEDS_PER_DAY 3
@@ -203,23 +208,46 @@ void onWsEvent(AsyncWebSocket*, AsyncWebSocketClient* c, AwsEventType type, void
 }
 
 // ---------- setup / loop ----------
-void connectWifi() {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("Wi-Fi");
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) { delay(400); Serial.print("."); }
-  Serial.println();
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("Connected. IP: "); Serial.println(WiFi.localIP());
-    if (MDNS.begin("dayjournal")) {
-      MDNS.addService("journalgallery", "tcp", HTTP_PORT);   // advertises _journalgallery._tcp
-      MDNS.addServiceTxt("journalgallery", "tcp", "fw", FW_VERSION);
-      Serial.println("mDNS: dayjournal.local  (_journalgallery._tcp)");
-    }
-  } else {
-    Serial.println("Wi-Fi FAILED — check SSID/PASS. Will keep retrying.");
+bool apMode = false;
+
+void startMdns() {
+  if (MDNS.begin("dayjournal")) {
+    MDNS.addService("journalgallery", "tcp", HTTP_PORT);   // advertises _journalgallery._tcp
+    MDNS.addServiceTxt("journalgallery", "tcp", "fw", FW_VERSION);
+    Serial.println("mDNS: dayjournal.local  (_journalgallery._tcp)");
   }
+}
+
+void startHotspot() {
+  apMode = true;
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASS);
+  Serial.println("=================================================");
+  Serial.printf("HOTSPOT MODE. On your phone, join Wi-Fi:\n  network:  %s\n  password: %s\n", AP_SSID, AP_PASS);
+  Serial.print("Then open the app. Device IP: ");
+  Serial.println(WiFi.softAPIP());        // usually 192.168.4.1
+  Serial.println("=================================================");
+  startMdns();
+}
+
+void connectWifi() {
+  bool haveCreds = strlen(WIFI_SSID) > 0;
+  if (haveCreds) {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    Serial.print("Joining Wi-Fi");
+    uint32_t start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) { delay(400); Serial.print("."); }
+    Serial.println();
+    if (WiFi.status() == WL_CONNECTED) {
+      apMode = false;
+      Serial.print("Connected. IP: "); Serial.println(WiFi.localIP());
+      startMdns();
+      return;
+    }
+    Serial.println("Wi-Fi join failed — falling back to hotspot.");
+  }
+  startHotspot();
 }
 
 void setup() {
@@ -292,7 +320,7 @@ void pollSerial() {
 }
 
 void loop() {
-  if (WiFi.status() != WL_CONNECTED) { connectWifi(); delay(1000); }
+  if (!apMode && WiFi.status() != WL_CONNECTED) { connectWifi(); delay(1000); }
   ws.cleanupClients();
   pollButton();
   pollSerial();
