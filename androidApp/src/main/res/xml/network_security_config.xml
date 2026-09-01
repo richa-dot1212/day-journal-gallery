@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app talks to the ESP32 companion over plain HTTP on the local network
+  (SoftAP 192.168.4.1, or a DHCP address on your Wi-Fi). There is no cloud
+  backend, so cleartext to the local link is required and safe here.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
