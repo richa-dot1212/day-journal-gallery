@@ -16,6 +16,7 @@
         android:name=".JournalApp"
         android:allowBackup="true"
         android:label="Day Journal"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.DayJournal">
 
