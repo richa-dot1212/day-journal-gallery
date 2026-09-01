@@ -55,7 +55,15 @@ Or just open the repo in Android Studio and let it sync.
 First launch asks for media permission (`READ_MEDIA_IMAGES/VIDEO`, or `READ_EXTERNAL_STORAGE`
 on API < 33) and, when you first record, `RECORD_AUDIO`.
 
-## Building the firmware
+## Building the firmware — Arduino IDE (minimal)
+
+For a quick bring-up on a board with just an LED strip + one button, use the single-file
+sketch at `firmware-esp32-arduino/DayJournalCompanion/`. It does Wi-Fi + mDNS + the
+`/status`, colour, and `WS /events` parts of the protocol — enough for the app to pair,
+push a day's colours to the strip, and receive a button press. See the header comment in
+the `.ino` for the four libraries to install and the two pins to set.
+
+## Building the full firmware — PlatformIO
 
 Requires [PlatformIO](https://platformio.org/) (`pip install platformio` or the VS Code ext).
 
