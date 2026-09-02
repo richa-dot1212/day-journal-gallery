@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.journalgallery.android.ui.day.DayDetailScreen
 import com.journalgallery.android.ui.gallery.MonthGridScreen
+import com.journalgallery.android.ui.orb.OrbConnectionEffect
 import com.journalgallery.android.ui.pairing.PairingScreen
 import com.journalgallery.shared.domain.DayKey
 
@@ -21,6 +22,11 @@ object Routes {
 @Composable
 fun AppNavHost() {
     val nav = rememberNavController()
+
+    // Day-orb: a physical button press on the orb opens that day, reusing the existing route.
+    OrbConnectionEffect(onOrbDaySelected = { day ->
+        nav.navigate(Routes.day(day)) { launchSingleTop = true }
+    })
 
     NavHost(navController = nav, startDestination = Routes.GALLERY) {
         composable(Routes.GALLERY) {

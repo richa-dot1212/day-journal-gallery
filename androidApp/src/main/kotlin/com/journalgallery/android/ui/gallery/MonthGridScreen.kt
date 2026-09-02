@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,12 +39,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.journalgallery.android.ui.components.ColorSyncIndicator
+import com.journalgallery.android.ui.orb.rememberOrbConnectionState
 import com.journalgallery.android.ui.permission.PermissionGate
 import com.journalgallery.android.ui.toBrush
 import com.journalgallery.shared.domain.ColorSyncState
 import com.journalgallery.shared.domain.DayColors
 import com.journalgallery.shared.domain.DayKey
 import com.journalgallery.shared.domain.MonthBucket
+import com.journalgallery.shared.orb.OrbConnectionState
 import org.koin.androidx.compose.koinViewModel
 
 private val MONTH_NAMES = listOf(
@@ -63,6 +68,7 @@ fun MonthGridScreen(
             TopAppBar(
                 title = { Text("Day Journal") },
                 actions = {
+                    OrbStatusIcon()
                     IconButton(onClick = onOpenPairing) {
                         Icon(Icons.Default.Memory, contentDescription = "ESP32 device")
                     }
@@ -169,5 +175,17 @@ private fun DayCell(
         if (hasMedia && syncState != null) {
             Box(Modifier.align(Alignment.TopEnd).padding(2.dp)) { ColorSyncIndicator(syncState) }
         }
+    }
+}
+
+@Composable
+private fun OrbStatusIcon() {
+    when (rememberOrbConnectionState()) {
+        OrbConnectionState.CONNECTED ->
+            Icon(Icons.Default.BluetoothConnected, "Day orb connected", tint = Color(0xFF2E7D32))
+        OrbConnectionState.SCANNING, OrbConnectionState.CONNECTING ->
+            Icon(Icons.AutoMirrored.Filled.BluetoothSearching, "Looking for day orb", tint = Color(0xFF1976D2))
+        OrbConnectionState.DISCONNECTED ->
+            Icon(Icons.Default.Bluetooth, "Day orb offline", tint = Color(0xFF9E9E9E))
     }
 }

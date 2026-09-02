@@ -7,6 +7,8 @@ import com.journalgallery.shared.audio.AudioRecorder
 import com.journalgallery.shared.data.DriverFactory
 import com.journalgallery.shared.media.AndroidMediaSource
 import com.journalgallery.shared.media.MediaSource
+import com.journalgallery.shared.orb.BleOrbTransport
+import com.journalgallery.shared.orb.OrbTransport
 import com.journalgallery.shared.sync.AndroidDeviceDiscovery
 import com.journalgallery.shared.sync.DeviceDiscovery
 import com.journalgallery.shared.work.AndroidBackgroundScheduler
@@ -22,4 +24,5 @@ actual fun platformModule(): Module = module {
     single<AudioPlayer> { AndroidAudioPlayer() }
     single<BackgroundScheduler> { AndroidBackgroundScheduler(androidContext()) }
     single<DeviceDiscovery> { AndroidDeviceDiscovery(androidContext()) }
+    single<OrbTransport> { BleOrbTransport(androidContext()) }
 }

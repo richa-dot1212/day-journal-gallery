@@ -34,9 +34,12 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.journalgallery.shared.orb.OrbController
+import org.koin.compose.koinInject
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +62,12 @@ fun DayDetailScreen(
     vm: DayViewModel = koinViewModel { parametersOf(day) },
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+
+    // Push this day's dominant colors to the orb whenever they're available/updated.
+    val orb = koinInject<OrbController>()
+    LaunchedEffect(day, state.colors) {
+        if (state.colors != null) orb.syncDay(day)
+    }
 
     Scaffold(
         topBar = {

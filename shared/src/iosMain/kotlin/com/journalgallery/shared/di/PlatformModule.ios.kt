@@ -8,9 +8,15 @@ import com.journalgallery.shared.domain.DeviceInfo
 import com.journalgallery.shared.domain.MediaItem
 import com.journalgallery.shared.media.MediaSource
 import com.journalgallery.shared.media.PixelBuffer
+import com.journalgallery.shared.orb.OrbConnectionState
+import com.journalgallery.shared.orb.OrbEvent
+import com.journalgallery.shared.orb.OrbId
+import com.journalgallery.shared.orb.OrbTransport
 import com.journalgallery.shared.sync.DeviceDiscovery
 import com.journalgallery.shared.work.BackgroundScheduler
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -26,6 +32,7 @@ actual fun platformModule(): Module = module {
     single<AudioPlayer> { IosAudioPlayerStub() }
     single<BackgroundScheduler> { IosBackgroundSchedulerStub() }
     single<DeviceDiscovery> { IosDeviceDiscoveryStub() }
+    single<OrbTransport> { IosOrbTransportStub() }
 }
 
 private class IosMediaSourceStub : MediaSource {
@@ -56,4 +63,14 @@ private class IosBackgroundSchedulerStub : BackgroundScheduler {
 
 private class IosDeviceDiscoveryStub : DeviceDiscovery {
     override fun discover(): Flow<List<DeviceInfo>> = flowOf(emptyList())
+}
+
+/** CoreBluetooth central goes here alongside the M10 iOS work. */
+private class IosOrbTransportStub : OrbTransport {
+    override val events: Flow<OrbEvent> = emptyFlow()
+    override val connectedOrbs = MutableStateFlow<Set<OrbId>>(emptySet())
+    override val connectionState = MutableStateFlow(OrbConnectionState.DISCONNECTED)
+    override fun start() = Unit
+    override fun stop() = Unit
+    override suspend fun pushColors(orb: OrbId, payload: ByteArray): Boolean = false
 }
