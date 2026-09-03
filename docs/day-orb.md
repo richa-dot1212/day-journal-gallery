@@ -1,8 +1,13 @@
 # Day-Orb BLE Companion
 
-A physical orb that represents one calendar day: it glows with that day's 3 dominant colors
-and has a button that opens that day in the app. Proof-of-concept is **one orb**; the code
-scales to **31** (one per day of a month) without app changes.
+A physical calendar: **one ESP32** with N orbs, each orb a single LED (that day's dominant
+color) plus a button under it. Press an orb → that day's photos open in the app. It is one
+BLE connection, not N devices.
+
+POC hardware: **5 orbs**, September days 1–5 (`OrbController.calendarMonth` / `calendarDayNumbers`,
+must match `ORB_MONTH` / `ORB_DAYS[]` in the firmware — `firmware-esp32-arduino/DayCalendar/`).
+Scaling to 31: extend those arrays and read the extra buttons through 74HC165 shift registers.
+Nothing in the app changes.
 
 ## Transport
 
@@ -15,21 +20,22 @@ new `OrbTransport` implementation — nothing else changes.
 | Item | UUID | Properties | Payload |
 |---|---|---|---|
 | Service | `6b1c1500-6a2a-4b1a-9b1e-8f7c2a3d9e10` | — | — |
-| Day-selected | `6b1c1501-6a2a-4b1a-9b1e-8f7c2a3d9e10` | **Notify** | 2 bytes: `[month (1–12), day (1–31)]`, sent on button press |
-| Colors | `6b1c1502-6a2a-4b1a-9b1e-8f7c2a3d9e10` | **Write** (no response ok) | 9 bytes: `R0 G0 B0 R1 G1 B1 R2 G2 B2` (day's 3 dominant colors, most-prominent first) |
+| Day-selected | `6b1c1501-6a2a-4b1a-9b1e-8f7c2a3d9e10` | **Notify** | 2 bytes: `[month (1–12), day (1–31)]`, sent when an orb's button is pressed |
+| Colors | `6b1c1502-6a2a-4b1a-9b1e-8f7c2a3d9e10` | **Write** | `orbCount * 3` bytes: one `R G B` per orb, in orb order (orb 0 = first configured day). Firmware maps triple *i* → LED *i*. |
 
-The orb must advertise the service UUID so the scan filter finds it. Standard CCCD
+The device must advertise the service UUID so the scan filter finds it. Standard CCCD
 (`00002902-…`) on the notify characteristic; the app enables notifications after connecting.
+Payload stays under the 20-byte default BLE MTU up to 6 orbs; beyond that the app negotiates a
+larger MTU (or the firmware exposes per-day writes).
 
 ## App behaviour
 
 - **Button press** → app resolves the year (most recent year in the library with media on that
-  date, else the current year) and navigates to the existing day screen. It also re-pushes that
-  day's colors to the orb.
-- **Opening a day** in the app (`DayDetailScreen`) → pushes that day's colors to the orb once
-  they've been computed by the existing color pipeline. (POC choice: the orb mirrors the day
-  you're looking at. With 31 orbs, pre-populate `OrbRegistry` and call
-  `OrbController.syncAllBoundDays()` after a month finishes computing.)
+  date, else the current year), navigates to the existing day screen, and re-pushes the whole
+  calendar's colors.
+- **On connect** and **on opening any day** → `OrbController.syncCalendar()` pushes one color
+  per orb (each day's most-prominent color; days with no computed color go out as off) in a
+  single write.
 - **Permissions**: `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` on Android 12+, `ACCESS_FINE_LOCATION`
   below that. Requested non-blockingly from the gallery screen; the gallery works without them.
 
@@ -49,7 +55,8 @@ The orb must advertise the service UUID so the scan filter finds it. Standard CC
 
 1. `BleOrbTransport`: don't `stopScan()` after the first hit — connect each distinct address,
    track one `BluetoothGatt` per orb (keyed by `OrbId`).
-2. Populate `OrbRegistry` with all 31 `OrbId → DayKey` bindings for the visible month.
-3. Call `OrbController.syncAllBoundDays()` when a month's colors finish computing.
+2. Extend `OrbController.calendarDayNumbers` to `1..31` (and `ORB_DAYS[]` in the firmware).
+3. Beyond ~6 orbs the color write exceeds the default BLE MTU — request MTU 247 in
+   `BleOrbTransport` after connecting, or split into per-day writes.
 
 The gallery, navigation, and color-extraction code are untouched by any of that.

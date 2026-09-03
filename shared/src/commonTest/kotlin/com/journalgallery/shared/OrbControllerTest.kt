@@ -8,12 +8,13 @@ import com.journalgallery.shared.domain.MonthKey
 import com.journalgallery.shared.domain.Rgb
 import com.journalgallery.shared.orb.DayResolution
 import com.journalgallery.shared.orb.OrbConnectionState
+import com.journalgallery.shared.orb.OrbController
 import com.journalgallery.shared.orb.OrbEvent
 import com.journalgallery.shared.orb.OrbGatt
 import com.journalgallery.shared.orb.OrbId
-import com.journalgallery.shared.orb.OrbController
 import com.journalgallery.shared.orb.OrbRegistry
 import com.journalgallery.shared.orb.OrbTransport
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -44,17 +45,31 @@ private class FakeTransport : OrbTransport {
 class OrbControllerTest {
 
     private fun months() = listOf(
-        MonthBucket(MonthKey(2025, 8), listOf(dayBucket(2025, 8, 7))),
-        MonthBucket(MonthKey(2026, 8), listOf(dayBucket(2026, 8, 7))),
-        MonthBucket(MonthKey(2026, 3), listOf(dayBucket(2026, 3, 2))),
+        MonthBucket(MonthKey(2025, 9), listOf(dayBucket(2025, 9, 2))),
+        MonthBucket(MonthKey(2026, 9), listOf(dayBucket(2026, 9, 2), dayBucket(2026, 9, 3))),
     )
 
     private fun dayBucket(y: Int, m: Int, d: Int) = DayBucket(DayKey(y, m, d), emptyList())
 
+    private fun controller(
+        transport: OrbTransport,
+        dispatcher: CoroutineDispatcher,
+        scope: CoroutineScope,
+        colorsForDay: (DayKey) -> DayColors? = { null },
+    ) = OrbController(
+        transport = transport,
+        registry = OrbRegistry(),
+        colorsForDay = colorsForDay,
+        resolveYear = { m, d -> DayResolution.resolveYear(months(), m, d) },
+        scope = scope,
+        ioDispatcher = dispatcher,
+        calendarMonth = 9,
+        calendarDayNumbers = listOf(1, 2, 3, 4, 5),
+    )
+
     @Test
     fun resolveYear_picksMostRecentLibraryMatch() {
-        assertEquals(2026, DayResolution.resolveYear(months(), 8, 7))
-        assertEquals(2026, DayResolution.resolveYear(months(), 3, 2))
+        assertEquals(2026, DayResolution.resolveYear(months(), 9, 2))
     }
 
     @Test
@@ -63,55 +78,61 @@ class OrbControllerTest {
     }
 
     @Test
-    fun encodeColors_isNineBytesInRgbOrder() {
-        val payload = OrbGatt.encodeColors(
-            DayColors(listOf(Rgb(1, 2, 3), Rgb(10, 20, 30), Rgb(255, 0, 128))),
-        )
+    fun encodeOrbColors_isOneTriplePerOrb_nullsAreOff() {
+        val payload = OrbGatt.encodeOrbColors(listOf(Rgb(1, 2, 3), null, Rgb(255, 0, 128)))
         assertEquals(9, payload.size)
-        assertEquals(listOf(1, 2, 3, 10, 20, 30, 255, 0, 128), payload.map { it.toInt() and 0xFF })
+        assertEquals(listOf(1, 2, 3, 0, 0, 0, 255, 0, 128), payload.map { it.toInt() and 0xFF })
     }
 
     @Test
-    fun buttonPress_resolvesDay_emitsSelection_andPushesColors() = runTest {
+    fun buttonPress_resolvesDay_emitsSelection_andSyncsCalendar() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val transport = FakeTransport()
-        val colors = DayColors(listOf(Rgb(9, 9, 9), Rgb(8, 8, 8), Rgb(7, 7, 7)))
-        val controller = OrbController(
-            transport = transport,
-            registry = OrbRegistry(),
-            colorsForDay = { colors },
-            resolveYear = { m, d -> DayResolution.resolveYear(months(), m, d) },
-            scope = CoroutineScope(backgroundScope.coroutineContext + dispatcher),
-            ioDispatcher = dispatcher,
+        val sept2 = DayColors(listOf(Rgb(10, 20, 30), Rgb(1, 1, 1), Rgb(2, 2, 2)))
+        val c = controller(
+            transport, dispatcher,
+            CoroutineScope(backgroundScope.coroutineContext + dispatcher),
+            colorsForDay = { if (it == DayKey(2026, 9, 2)) sept2 else null },
         )
         val selections = mutableListOf<DayKey>()
-        backgroundScope.launch(dispatcher) { controller.daySelections.collect { selections += it } }
-        controller.start()
+        backgroundScope.launch(dispatcher) { c.daySelections.collect { selections += it } }
+        c.start()
         assertTrue(transport.started)
 
-        transport.emitted.emit(OrbEvent.ButtonPressed(OrbId("AA:BB"), month = 8, day = 7))
+        transport.emitted.emit(OrbEvent.ButtonPressed(OrbId("AA:BB"), month = 9, day = 2))
 
-        assertEquals(listOf(DayKey(2026, 8, 7)), selections)
+        assertEquals(listOf(DayKey(2026, 9, 2)), selections)
 
-        // colors for the pressed day were pushed to the connected orb
-        val (orb, payload) = transport.writes.first()
+        // one calendar write: 5 orbs * 3 bytes, orb index 1 (Sept 2) = the day's first color
+        val (orb, payload) = transport.writes.last()
         assertEquals(OrbId("AA:BB"), orb)
-        assertEquals(OrbGatt.encodeColors(colors).toList(), payload.toList())
+        assertEquals(15, payload.size)
+        assertEquals(listOf(10, 20, 30), payload.slice(3..5).map { it.toInt() and 0xFF })
+        assertEquals(listOf(0, 0, 0), payload.slice(0..2).map { it.toInt() and 0xFF }) // Sept 1: no colors
+    }
+
+    @Test
+    fun onConnect_pushesCalendar() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val transport = FakeTransport()
+        val c = controller(transport, dispatcher, CoroutineScope(backgroundScope.coroutineContext + dispatcher))
+        c.start()
+
+        transport.emitted.emit(OrbEvent.ConnectionChanged(OrbId("AA:BB"), OrbConnectionState.CONNECTED))
+
+        assertEquals(1, transport.writes.size)
+        assertEquals(15, transport.writes.first().second.size)
     }
 
     @Test
     fun buttonPress_withGarbageBytes_isIgnored() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
         val transport = FakeTransport()
-        val controller = OrbController(
-            transport, OrbRegistry(), colorsForDay = { null },
-            resolveYear = { _, _ -> 2026 },
-            scope = CoroutineScope(backgroundScope.coroutineContext + dispatcher),
-            ioDispatcher = dispatcher,
-        )
-        controller.start()
+        val c = controller(transport, dispatcher, CoroutineScope(backgroundScope.coroutineContext + dispatcher))
+        c.start()
+
         transport.emitted.emit(OrbEvent.ButtonPressed(OrbId("AA:BB"), month = 99, day = 250))
-        // nothing pushed, no crash
+
         assertTrue(transport.writes.isEmpty())
     }
 }

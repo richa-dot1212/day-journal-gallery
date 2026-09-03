@@ -63,10 +63,10 @@ fun DayDetailScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
 
-    // Push this day's dominant colors to the orb whenever they're available/updated.
+    // Opening any day is a good moment to refresh every orb's color from the cache.
     val orb = koinInject<OrbController>()
     LaunchedEffect(day, state.colors) {
-        if (state.colors != null) orb.syncDay(day)
+        orb.syncCalendar()
     }
 
     Scaffold(

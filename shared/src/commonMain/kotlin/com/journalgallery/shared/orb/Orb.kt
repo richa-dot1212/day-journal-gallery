@@ -2,6 +2,7 @@ package com.journalgallery.shared.orb
 
 import com.journalgallery.shared.domain.DayColors
 import com.journalgallery.shared.domain.DayKey
+import com.journalgallery.shared.domain.Rgb
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,19 +19,34 @@ object OrbGatt {
     /** Notify: 2 bytes [month, day] pushed when the orb's physical button is pressed. */
     const val DAY_SELECTED_UUID = "6b1c1501-6a2a-4b1a-9b1e-8f7c2a3d9e10"
 
-    /** Write-only: 9 bytes = 3 RGB triples, the day's dominant colors. */
+    /**
+     * Write-only. One RGB triple per orb, in orb order (orb 0 = first configured day).
+     * Single-orb POC sent 9 bytes (3 colors for 3 LEDs); the calendar sends
+     * `orbCount * 3` bytes (one color per orb). The firmware maps triple i onto LED i.
+     */
     const val COLOR_WRITE_UUID = "6b1c1502-6a2a-4b1a-9b1e-8f7c2a3d9e10"
 
     /** Standard Client Characteristic Configuration Descriptor. */
     const val CCCD_UUID = "00002902-0000-1000-8000-00805f9b34fb"
 
-    /** Serialize [colors] to the 9-byte on-wire form the orb firmware expects. */
+    /** Legacy single-orb form: 9 bytes = 3 RGB triples of one day's dominant colors. */
     fun encodeColors(colors: DayColors): ByteArray {
         val out = ByteArray(9)
         colors.colors.forEachIndexed { i, c ->
             out[i * 3] = c.r.toByte()
             out[i * 3 + 1] = c.g.toByte()
             out[i * 3 + 2] = c.b.toByte()
+        }
+        return out
+    }
+
+    /** Calendar form: one color per orb, `colors.size * 3` bytes. Nulls render as off (black). */
+    fun encodeOrbColors(colors: List<Rgb?>): ByteArray {
+        val out = ByteArray(colors.size * 3)
+        colors.forEachIndexed { i, c ->
+            out[i * 3] = (c?.r ?: 0).toByte()
+            out[i * 3 + 1] = (c?.g ?: 0).toByte()
+            out[i * 3 + 2] = (c?.b ?: 0).toByte()
         }
         return out
     }
