@@ -19,12 +19,12 @@
 #include <BLE2902.h>
 
 // ===================== EDIT THESE =====================
-#define NUM_ORBS   5
+#define NUM_ORBS   4
 #define ORB_MONTH  9            // September
-const uint8_t ORB_DAYS[NUM_ORBS]   = { 1, 2, 3, 4, 5 };        // which day each orb represents
-const uint8_t BUTTON_PINS[NUM_ORBS] = { 27, 26, 25, 33, 32 };  // button N -> GND + this pin
+const uint8_t ORB_DAYS[NUM_ORBS]    = { 1, 2, 3, 4 };      // which day each orb represents
+const uint8_t BUTTON_PINS[NUM_ORBS] = { 27, 26, 25, 33 };  // button N -> GND + this pin
 
-#define LED_PIN     5          // WS2812B DIN (one LED per orb, in orb order)
+#define LED_PIN     5          // WS2812B DIN of the FIRST LED (they chain from there)
 #define BRIGHTNESS  60         // 0-255
 // =====================================================
 
@@ -43,7 +43,6 @@ uint8_t orbColors[NUM_ORBS][3] = {
   {255, 190,  60},
   {230,  60, 120},
   { 80, 160, 255},
-  {120, 220, 120},
 };
 
 bool lastButton[NUM_ORBS];

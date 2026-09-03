@@ -4,8 +4,9 @@ A physical calendar: **one ESP32** with N orbs, each orb a single LED (that day'
 color) plus a button under it. Press an orb → that day's photos open in the app. It is one
 BLE connection, not N devices.
 
-POC hardware: **5 orbs**, September days 1–5 (`OrbController.calendarMonth` / `calendarDayNumbers`,
+POC hardware: **4 orbs**, September days 1–4 (`OrbController.calendarMonth` / `calendarDayNumbers`,
 must match `ORB_MONTH` / `ORB_DAYS[]` in the firmware — `firmware-esp32-arduino/DayCalendar/`).
+Buttons on direct GPIOs 27/26/25/33; LEDs daisy-chained from GPIO 5.
 Scaling to 31: extend those arrays and read the extra buttons through 74HC165 shift registers.
 Nothing in the app changes.
 

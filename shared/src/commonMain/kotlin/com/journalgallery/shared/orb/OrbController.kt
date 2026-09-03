@@ -22,8 +22,8 @@ import kotlinx.coroutines.withContext
  *  - [resolveYear]   → maps a bare (month, day) to a full year, using whatever the app
  *                      already knows (most-recent match in the library, else this year)
  *
- * POC hardware: one ESP32 with [calendarDayNumbers].size orbs, each a single LED + button,
- * all in [calendarMonth]. [syncCalendar] pushes one color per orb in a single write.
+ * POC hardware: one ESP32 with 4 orbs (September 1-4), each a single LED + button.
+ * [syncCalendar] pushes one color per orb in a single write.
  * Scaling to 31: extend [calendarDayNumbers] and add shift registers on the firmware side —
  * nothing here changes.
  */
@@ -37,7 +37,7 @@ class OrbController(
     /** Month the physical calendar represents. Must match `ORB_MONTH` in the firmware. */
     val calendarMonth: Int = 9,
     /** Day-of-month each orb represents, in orb order. Must match `ORB_DAYS[]` in the firmware. */
-    val calendarDayNumbers: List<Int> = listOf(1, 2, 3, 4, 5),
+    val calendarDayNumbers: List<Int> = listOf(1, 2, 3, 4),
 ) {
     private val _daySelections = MutableSharedFlow<DayKey>(extraBufferCapacity = 8)
 

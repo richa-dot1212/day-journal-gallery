@@ -64,7 +64,7 @@ class OrbControllerTest {
         scope = scope,
         ioDispatcher = dispatcher,
         calendarMonth = 9,
-        calendarDayNumbers = listOf(1, 2, 3, 4, 5),
+        calendarDayNumbers = listOf(1, 2, 3, 4),
     )
 
     @Test
@@ -103,10 +103,10 @@ class OrbControllerTest {
 
         assertEquals(listOf(DayKey(2026, 9, 2)), selections)
 
-        // one calendar write: 5 orbs * 3 bytes, orb index 1 (Sept 2) = the day's first color
+        // one calendar write: 4 orbs * 3 bytes, orb index 1 (Sept 2) = the day's first color
         val (orb, payload) = transport.writes.last()
         assertEquals(OrbId("AA:BB"), orb)
-        assertEquals(15, payload.size)
+        assertEquals(12, payload.size)
         assertEquals(listOf(10, 20, 30), payload.slice(3..5).map { it.toInt() and 0xFF })
         assertEquals(listOf(0, 0, 0), payload.slice(0..2).map { it.toInt() and 0xFF }) // Sept 1: no colors
     }
@@ -121,7 +121,7 @@ class OrbControllerTest {
         transport.emitted.emit(OrbEvent.ConnectionChanged(OrbId("AA:BB"), OrbConnectionState.CONNECTED))
 
         assertEquals(1, transport.writes.size)
-        assertEquals(15, transport.writes.first().second.size)
+        assertEquals(12, transport.writes.first().second.size)
     }
 
     @Test
