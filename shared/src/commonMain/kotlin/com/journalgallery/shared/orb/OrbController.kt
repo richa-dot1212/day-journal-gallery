@@ -22,8 +22,9 @@ import kotlinx.coroutines.withContext
  *  - [resolveYear]   → maps a bare (month, day) to a full year, using whatever the app
  *                      already knows (most-recent match in the library, else this year)
  *
- * POC hardware: one ESP32 with 4 orbs (September 1-4), each a single LED + button.
- * [syncCalendar] pushes one color per orb in a single write.
+ * POC hardware: one ESP32 with 4 orbs (September 1-4). Each orb is a 3-LED strip showing
+ * that day's 3 dominant colors, with a button under it. [syncCalendar] pushes all four
+ * days' colors (4 x 9 = 36 bytes) in a single write.
  * Scaling to 31: extend [calendarDayNumbers] and add shift registers on the firmware side —
  * nothing here changes.
  */
@@ -80,20 +81,19 @@ class OrbController(
     }
 
     /**
-     * Push one color per orb (the day's most-prominent color) to the calendar in a single
-     * write. Days without computed colors go out as off. Safe to call repeatedly.
+     * Push every orb's 3 colors (that day's `DayColors`) to the calendar in a single write.
+     * Days without computed colors go out as off. Safe to call repeatedly.
      */
     suspend fun syncCalendar() {
         val orbs = transport.connectedOrbs.value
         if (orbs.isEmpty()) return
 
         val payload = withContext(ioDispatcher) {
-            val colors = calendarDayNumbers.map { dom ->
+            val days = calendarDayNumbers.map { dom ->
                 val year = resolveYear(calendarMonth, dom)
-                val key = runCatching { DayKey(year, calendarMonth, dom) }.getOrNull()
-                key?.let { colorsForDay(it) }?.colors?.firstOrNull()
+                runCatching { DayKey(year, calendarMonth, dom) }.getOrNull()?.let { colorsForDay(it) }
             }
-            OrbGatt.encodeOrbColors(colors)
+            OrbGatt.encodeCalendarColors(days)
         }
         for (orb in orbs) transport.pushColors(orb, payload)
     }

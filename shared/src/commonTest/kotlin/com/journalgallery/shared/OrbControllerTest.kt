@@ -78,10 +78,12 @@ class OrbControllerTest {
     }
 
     @Test
-    fun encodeOrbColors_isOneTriplePerOrb_nullsAreOff() {
-        val payload = OrbGatt.encodeOrbColors(listOf(Rgb(1, 2, 3), null, Rgb(255, 0, 128)))
-        assertEquals(9, payload.size)
-        assertEquals(listOf(1, 2, 3, 0, 0, 0, 255, 0, 128), payload.map { it.toInt() and 0xFF })
+    fun encodeCalendarColors_isNineBytesPerOrb_nullDaysAreOff() {
+        val d0 = DayColors(listOf(Rgb(1, 2, 3), Rgb(4, 5, 6), Rgb(7, 8, 9)))
+        val payload = OrbGatt.encodeCalendarColors(listOf(d0, null))
+        assertEquals(18, payload.size)
+        assertEquals((1..9).toList(), payload.slice(0..8).map { it.toInt() and 0xFF })
+        assertEquals(List(9) { 0 }, payload.slice(9..17).map { it.toInt() and 0xFF })
     }
 
     @Test
@@ -103,12 +105,15 @@ class OrbControllerTest {
 
         assertEquals(listOf(DayKey(2026, 9, 2)), selections)
 
-        // one calendar write: 4 orbs * 3 bytes, orb index 1 (Sept 2) = the day's first color
+        // one calendar write: 4 orbs * 9 bytes; orb 1 (Sept 2) holds that day's 3 colors
         val (orb, payload) = transport.writes.last()
         assertEquals(OrbId("AA:BB"), orb)
-        assertEquals(12, payload.size)
-        assertEquals(listOf(10, 20, 30), payload.slice(3..5).map { it.toInt() and 0xFF })
-        assertEquals(listOf(0, 0, 0), payload.slice(0..2).map { it.toInt() and 0xFF }) // Sept 1: no colors
+        assertEquals(36, payload.size)
+        assertEquals(
+            listOf(10, 20, 30, 1, 1, 1, 2, 2, 2),
+            payload.slice(9..17).map { it.toInt() and 0xFF },
+        )
+        assertEquals(List(9) { 0 }, payload.slice(0..8).map { it.toInt() and 0xFF }) // Sept 1: off
     }
 
     @Test
@@ -121,7 +126,7 @@ class OrbControllerTest {
         transport.emitted.emit(OrbEvent.ConnectionChanged(OrbId("AA:BB"), OrbConnectionState.CONNECTED))
 
         assertEquals(1, transport.writes.size)
-        assertEquals(12, transport.writes.first().second.size)
+        assertEquals(36, transport.writes.first().second.size)
     }
 
     @Test

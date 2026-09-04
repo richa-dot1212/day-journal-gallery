@@ -40,13 +40,30 @@ object OrbGatt {
         return out
     }
 
-    /** Calendar form: one color per orb, `colors.size * 3` bytes. Nulls render as off (black). */
+    /** One color per orb (single-LED orbs), `colors.size * 3` bytes. Nulls render off. */
     fun encodeOrbColors(colors: List<Rgb?>): ByteArray {
         val out = ByteArray(colors.size * 3)
         colors.forEachIndexed { i, c ->
             out[i * 3] = (c?.r ?: 0).toByte()
             out[i * 3 + 1] = (c?.g ?: 0).toByte()
             out[i * 3 + 2] = (c?.b ?: 0).toByte()
+        }
+        return out
+    }
+
+    /**
+     * Calendar form for 3-LED orbs: each orb gets that day's 3 colors, `days.size * 9` bytes,
+     * in orb order. A null day (no colors computed) sends 9 zero bytes = that orb off.
+     */
+    fun encodeCalendarColors(days: List<DayColors?>): ByteArray {
+        val out = ByteArray(days.size * 9)
+        days.forEachIndexed { i, dc ->
+            val base = i * 9
+            dc?.colors?.forEachIndexed { j, c ->
+                out[base + j * 3] = c.r.toByte()
+                out[base + j * 3 + 1] = c.g.toByte()
+                out[base + j * 3 + 2] = c.b.toByte()
+            }
         }
         return out
     }

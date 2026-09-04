@@ -171,10 +171,15 @@ class BleOrbTransport(private val context: Context) : OrbTransport {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    handler.post { g.discoverServices() }
+                    // Bigger MTU so a full calendar color payload (4 orbs x 9 bytes) is one write.
+                    handler.post { if (!g.requestMtu(247)) g.discoverServices() }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> handler.post { onDisconnected() }
             }
+        }
+
+        override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            handler.post { g.discoverServices() }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
