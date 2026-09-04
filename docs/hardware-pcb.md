@@ -40,7 +40,7 @@ Add the external 5 V supply (J1) once you have more than ~8 LEDs.
 
 **LED data**
 ```
-U1.GPIO5 ──► U2.A (input)
+U1.GPIO4 ──► U2.A (input)
 U2.Y (output, now 5 V) ──► R1 ──► J2.DATA ──► D1.DIN
 D1.DOUT ──► D2.DIN ──► D3.DIN ──► D4.DIN         (each pixel's OUT to the next pixel's IN)
 ```
@@ -60,7 +60,7 @@ if you want a hardware pull-up too.
 
 | ESP32 pin | Use |
 |---|---|
-| GPIO 5 | WS2812B data out (to level shifter / first pixel) |
+| GPIO 4 | WS2812B data| WS2812B data out (to level shifter / first pixel) |
 | GPIO 27 | Button 1 → Sept 1 |
 | GPIO 26 | Button 2 → Sept 2 |
 | GPIO 25 | Button 3 → Sept 3 |

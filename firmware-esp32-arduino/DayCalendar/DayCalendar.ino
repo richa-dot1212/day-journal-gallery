@@ -25,7 +25,8 @@
 const uint8_t ORB_DAYS[NUM_ORBS]    = { 1, 2, 3, 4 };      // which day each orb represents
 const uint8_t BUTTON_PINS[NUM_ORBS] = { 27, 26, 25, 33 };  // button N -> GND + this pin
 
-#define LED_PIN       5           // DIN of the FIRST LED; strips chain DOUT->DIN
+#define LED_PIN       4           // DIN of the FIRST LED; strips chain DOUT->DIN.
+                                  // GPIO4 (not 5 - GPIO5 is a strapping pin and breaks uploads)
 #define BRIGHTNESS    60          // 0-255
 // =====================================================
 
