@@ -44,7 +44,7 @@ U1.GPIO4 ──► U2.A (input)
 U2.Y (output, now 5 V) ──► R1 ──► J2.DATA ──► D1.DIN
 D1.DOUT ──► D2.DIN ──► D3.DIN ──► D4.DIN         (each pixel's OUT to the next pixel's IN)
 ```
-If you skip U2: `GPIO5 ──► R1 ──► D1.DIN` directly (works for short runs, 3.3 V logic).
+If you skip U2: `GPIO4 ──► R1 ──► D1.DIN` directly (works for short runs, 3.3 V logic).
 
 **Buttons** (firmware uses internal pull-ups — no external resistor needed)
 ```
@@ -60,7 +60,7 @@ if you want a hardware pull-up too.
 
 | ESP32 pin | Use |
 |---|---|
-| GPIO 4 | WS2812B data| WS2812B data out (to level shifter / first pixel) |
+| GPIO 4 | WS2812B data out (to level shifter / first pixel) |
 | GPIO 27 | Button 1 → Sept 1 |
 | GPIO 26 | Button 2 → Sept 2 |
 | GPIO 25 | Button 3 → Sept 3 |

@@ -27,7 +27,7 @@ const uint8_t BUTTON_PINS[NUM_ORBS] = { 27, 26, 25, 33 };  // button N -> GND + 
 
 #define LED_PIN       4           // DIN of the FIRST LED; strips chain DOUT->DIN.
                                   // GPIO4 (not 5 - GPIO5 is a strapping pin and breaks uploads)
-#define BRIGHTNESS    60          // 0-255
+#define BRIGHTNESS    255          // 0-255
 // =====================================================
 
 #define NUM_LEDS  (NUM_ORBS * LEDS_PER_ORB)   // 12
